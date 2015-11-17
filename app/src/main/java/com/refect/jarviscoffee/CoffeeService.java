@@ -19,6 +19,10 @@ import at.abraxas.amarino.AmarinoIntent;
  */
 public class CoffeeService extends Service {
 
+    private static final String DEVICE_ADDRESS = "00:06:66:45:0E:97";
+
+    private int retry = 5;
+
     // AlarmActivity listens for this broadcast intent, so that other applications
     // can snooze the alarm (after ALARM_ALERT_ACTION and before ALARM_DONE_ACTION).
     public static final String ALARM_SNOOZE_ACTION = "com.android.deskclock.ALARM_SNOOZE";
@@ -104,9 +108,18 @@ public class CoffeeService extends Service {
             } else if(action.equals(AmarinoIntent.ACTION_CONNECTED)) {
                 Log.d("CoffeeService (onReceive)", "Amarino - Connected");
                 //yey, make coffee
+                retry = 5;
+                Amarino.sendDataToArduino(getApplicationContext(), DEVICE_ADDRESS, 'a', 1);
             } else if(action.equals(AmarinoIntent.ACTION_CONNECTION_FAILED)) {
                 Log.d("CoffeeService (onReceive)", "Amarino - Connection Failed");
                 //try again (limit)
+                if(retry >= 0) {
+                    Toast.makeText(getApplicationContext(), "Connection Failed - Retrying: " + retry--, Toast.LENGTH_SHORT).show();
+                    Amarino.connect(getApplicationContext(), DEVICE_ADDRESS);
+                } else {
+                    retry = 5;
+                    Toast.makeText(getApplicationContext(), "Could not connect to device", Toast.LENGTH_SHORT).show();
+                }
             } else if(action.equals(AmarinoIntent.ACTION_DISCONNECT)) {
                 Log.d("CoffeeService (onReceive)", "Amarino - Disconnect");
                 //cool story
@@ -134,6 +147,12 @@ public class CoffeeService extends Service {
             } else if(action.equals(ALARM_ALERT_ACTION)) {
                 Log.d("CoffeeService (onReceive)", "Alarm - Alert");
                 Toast.makeText(getApplicationContext(), "Alert", Toast.LENGTH_SHORT).show();
+
+                if (Amarino.isCorrectAddressFormat(DEVICE_ADDRESS)) {
+                    Amarino.connect(getApplicationContext(), DEVICE_ADDRESS);
+                } else {
+                    Log.w("CoffeeService (onReceive)", "Device Address is in the wrong format");
+                }
             }
         }
     };
